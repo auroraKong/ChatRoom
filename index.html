@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Socket.IO Chat</title>
+	<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+	<div class="chat hide">
+		<ul id="messages"></ul>
+		<form action="">
+			<input type="text" id="m" autocomplete="off" placeholder="enter to send" autofocus><button>Send</button>
+		</form>
+	</div>
+
+	<div class="login">
+		<h1 class="title">What's your nickname?</h1>
+		<input type="text" class="usernameInput" id="usernameInput" placeholder="enter to send" autofocus>
+		<p class="hint"></p>
+	</div>
+
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="/jquery-3.2.1.js"></script>
+	<script>
+		$(function(){
+			var $messageBox = $('#messages');
+			var $usernameInput = $('#usernameInput');
+			var socket = io(); // load the socket.io-client which exposes a io global, and then connect
+			$usernameInput.on('keypress', function(e){
+				var val = $(this).val().trim();
+				if(e.keyCode == '13' && val){
+					socket.emit('add user', {
+						user: val
+					});
+					
+					$(this).val('');
+				}
+			})
+			$('form').submit(function(){
+				socket.emit('chat message', {
+					chat: $('#m').val(),
+					time: (new Date()).getTime(),
+				});
+				$('#m').val('');
+				return false;
+			})
+			socket.on('login', function(msg){
+				if(!msg.hint){
+					$usernameInput.addClass('shake');
+					$('.hint').text('Nickname is taken, choose another pls!');
+					setTimeout(function(){
+						$usernameInput.removeClass('shake');
+					}, 1000);
+				}else{
+					$('.hint').text('');
+					$('.login').addClass('hide');
+					$('.chat').removeClass('hide');
+					var $el = $('<li>').addClass('log').text(msg.user + ' joined');
+					$messageBox.append($el);
+					var $el2 = $('<li>').addClass('log').text('There are ' + msg.cot + ' participants');
+					$messageBox.append($el2);
+				}
+			})
+			socket.on('chat message', function(msg){
+				$messageBox.append($('<li>').text(msg.user + ' (' + formatDate(msg.time) + '): ' + msg.chat));
+			})
+			socket.on('logout', function(msg){
+				var $el = $('<li>').addClass('log').text(msg.user + ' left');
+				$messageBox.append($el);
+				var $el2 = $('<li>').addClass('log').text('There ' + (msg.cot <= 1 ? 'is ' : 'are ') + msg.cot + ' participants');
+				$messageBox.append($el2);
+			})
+			function formatDate(time){
+				function preZero(num){
+					return num < 10 ? '0'+num : num;
+				}
+				var date = new Date();
+				date.setTime(time);
+				return date.getFullYear() + '-' + preZero(date.getMonth()+1) + '-' + preZero(date.getDate()+1) + ' ' + preZero(date.getHours()+1) + ':' + preZero(date.getMinutes()) + ':' + preZero(date.getSeconds());
+			}
+		});
+	</script>
+</body>
+</html>
